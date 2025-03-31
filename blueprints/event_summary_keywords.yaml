@@ -1,12 +1,12 @@
 blueprint:
-  name: AI Event Summary with Keywords (v1.4.2-keywords)
-  author: valentinfrlch
+  name: AI Event Summary (v1.4.2-keywords)
+  author: valentinfrlch, adnansarajlic
   description: >
     AI-powered summaries for security camera events.
     Sends a notification with a preview to your phone that is updated dynamically when the AI summary is available.
-    Includes keyword-based notification triggering.
+    Includes keyword-based notification triggering with options to only notify on keyword matches.
   domain: automation
-  source_url: https://github.com/valentinfrlch/ha-llmvision/blob/main/blueprints/event_summary_keywords.yaml
+  source_url: https://github.com/valentinfrlch/ha-llmvision/blob/main/blueprints/event_summary.yaml
   input:
     important:
       name: Important (Experimental)
@@ -33,17 +33,29 @@ blueprint:
     message:
       name: Prompt
       description: Model prompt for the video_analyzer action
-      default: "Summarize the events based on a series of images captured at short intervals. Focus only on moving subjects such as people, vehicles, and other active elements. Ignore static objects and scenery. Provide a clear and concise account of movements and interactions. Do not mention or imply the existence of images—present the information as if directly observing the events. If no movement is detected, respond with: 'No activity observed.'"
+      default: "Summarize the events based on a series of images captured at short intervals. Focus only on moving subjects such as people, vehicles, and other active elements. Ignore static objects and scenery. Provide a clear and concise account of movements and interactions. Do not mention or imply the existence of images. Present the information as if directly observing the events. If specific animal or car are detected use those keywords. If no movement is detected, respond with: 'No activity observed.'"
       selector:
         text:
           multiline: true
     trigger_keywords:
       name: Trigger Keywords
-      description: Enter keywords (comma-separated) that will trigger notifications regardless of importance setting. For example person, car, package, delivery
+      description: Enter keywords (comma-separated) that will trigger notifications regardless of importance setting. For example: "person, car, package, delivery"
       default: ""
       selector:
         text:
           multiline: false
+    keywords_only:
+      name: Keywords Only
+      description: When enabled, notifications will only be sent if the summary contains one of your trigger keywords.
+      default: false
+      selector:
+        boolean:
+    generate_title:
+      name: Generate Title
+      description: Use AI to generate a title for the event summary.
+      default: true
+      selector:
+        boolean:
     run_conditions:
       name: Run Conditions
       description: All conditions must be true in order for the blueprint to run.
@@ -181,6 +193,8 @@ variables:
   notify_devices: !input notify_device
   notification_delivery: !input notification_delivery
   trigger_keywords: !input trigger_keywords
+  keywords_only: !input keywords_only
+  generate_title: !input generate_title
   keywords_list: >
     {% if trigger_keywords %}
       {% set keywords = trigger_keywords.split(',') %}
@@ -239,7 +253,6 @@ condition:
   - condition: and
     conditions: !input run_conditions
   
-
 action:
   - choose:
       - conditions:
@@ -270,7 +283,7 @@ action:
       use_memory: !input use_memory
       remember: !input remember
       expose_images: "{{preview_mode == 'Snapshot' or remember}}"
-      generate_title: !input remember
+      generate_title: "{{generate_title}}"
       include_filename: true
       max_frames: !input max_frames
       target_width: !input target_width
@@ -294,17 +307,24 @@ action:
           {{ false }}
         {% endif %}
 
-  # Cancel automation if event not deemed important and doesn't contain keywords
+  # Cancel automation if doesn't meet notification criteria
   - choose:
+      # If keywords_only is true, only continue if keywords are found
       - conditions:
           - condition: template
-            value_template: "{{ important and importance.response_text|lower == 'passive' and not contains_keywords }}"
+            value_template: "{{ keywords_only and not contains_keywords }}"
+        sequence:
+          - stop: "No keywords found and keywords_only is enabled"
+      # If important is enabled and not keywords_only, check importance unless keywords are found
+      - conditions:
+          - condition: template
+            value_template: "{{ important and not keywords_only and importance.response_text|lower == 'passive' and not contains_keywords }}"
         sequence:
           - stop: "Event is not important and doesn't contain trigger keywords"
 
   - alias: "Update label with title"
     variables:
-      label: "{{response.title}}"
+      label: "{{ response.title if generate_title and response.title is defined else 'Motion detected' }}"
       custom_interruption_level: >
         {% if importance is defined and importance.response_text|lower == 'critical' %}
           critical
@@ -338,8 +358,6 @@ action:
                     alert_once: true
                     push:
                       interruption-level: "{{custom_interruption_level}}"
-                    style: big_text
-                    big_text: "{{response.response_text}}"                     
 
   - choose:
       - conditions:
@@ -362,8 +380,6 @@ action:
                     group: "{{group}}"
                     push:
                       interruption-level: "{{'passive' if notification_delivery=='Dynamic' else custom_interruption_level}}"
-                    style: big_text
-                    big_text: "{{response.response_text}}"
       - conditions:
           - condition: template
             value_template: "{{ preview_mode=='Live Preview' }}"
@@ -384,8 +400,5 @@ action:
                     group: "{{group}}"
                     push:
                       interruption-level: "{{'passive' if notification_delivery=='Dynamic' else custom_interruption_level}}"
-                    style: big_text
-                    big_text: "{{response.response_text}}"
             
-
   - delay: '00:{{cooldown|int}}:00'
