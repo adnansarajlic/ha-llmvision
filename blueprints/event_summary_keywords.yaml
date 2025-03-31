@@ -338,6 +338,8 @@ action:
                     alert_once: true
                     push:
                       interruption-level: "{{custom_interruption_level}}"
+                    style: big_text
+                    big_text: "{{response.response_text}}"                     
 
   - choose:
       - conditions:
@@ -360,6 +362,8 @@ action:
                     group: "{{group}}"
                     push:
                       interruption-level: "{{'passive' if notification_delivery=='Dynamic' else custom_interruption_level}}"
+                    style: big_text
+                    big_text: "{{response.response_text}}"
       - conditions:
           - condition: template
             value_template: "{{ preview_mode=='Live Preview' }}"
@@ -380,6 +384,8 @@ action:
                     group: "{{group}}"
                     push:
                       interruption-level: "{{'passive' if notification_delivery=='Dynamic' else custom_interruption_level}}"
+                    style: big_text
+                    big_text: "{{response.response_text}}"
             
 
   - delay: '00:{{cooldown|int}}:00'
