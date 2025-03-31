@@ -33,7 +33,7 @@ blueprint:
     message:
       name: Prompt
       description: Model prompt for the video_analyzer action
-      default: "Summarize the events based on a series of images captured at short intervals. Focus only on moving subjects such as people, vehicles, and other active elements. Ignore static objects and scenery. Provide a clear and concise account of movements and interactions. Do not mention or imply the existence of images. Present the information as if directly observing the events. If specific animal or car are detected use those keywords. If no movement is detected, respond with: 'No activity observed.'"
+      default: "Observe and summarize the movements and interactions of dynamic elements such as people, vehicles, and animals over a sequence of short-interval images. Ignore static objects and scenery. Provide a concise and chronological account of all detected motion, specifying subjects when identifiable (e.g., 'a red car,' 'a dog'). If no movement is detected, respond with: 'No activity observed.'"
       selector:
         text:
           multiline: true
