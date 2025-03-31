@@ -41,7 +41,7 @@ blueprint:
     message:
       name: Prompt
       description: Model prompt for the video_analyzer action
-      default: "Observe and summarize the movements and interactions of dynamic elements such as people, vehicles, and animals over a sequence of short-interval images. Ignore static objects and scenery. Provide a concise and chronological account of all detected motion, specifying subjects when identifiable (e.g., 'a red car,' 'a dog'). If no movement is detected, respond with: 'No activity observed.'"
+      default: "Observe and summarize the movements and interactions of dynamic elements such as people, vehicles, and animals over a sequence of short-interval images. Ignore static objects and scenery. Provide a concise and chronological account of all detected motion, specifying subjects when identifiable (e.g., 'a red car,' 'a dog'). Do not mention or imply the existence of images. Present the information as if directly observing the events. If no movement is detected, respond with: 'No activity observed.'"
       selector:
         text:
           multiline: true
@@ -211,7 +211,11 @@ variables:
       {% set _ = None %}
     {% endif %}
   modified_prompt: >
-    {{language_instruction}}{{message}}
+      {% if response_language and response_language|lower != 'english' %}
+        Respond in {{response_language}}. {{message}}
+      {% else %}
+        {{message}}
+      {% endif %}
   importance_prompt_with_language: >
     {% if response_language and response_language|lower != 'english' %}
       Classify the security event based on this image. Choose from the following options: "passive" for unimportant events, "time-sensitive" for notable but non-critical events such as a person at the front door, and "critical" only for potential burglaries or highly suspicious activity. Respond with one of these options exactly, without additional explanation. For clarity: always respond with one of the three English words: passive, time-sensitive, or critical, regardless of the language used elsewhere.
