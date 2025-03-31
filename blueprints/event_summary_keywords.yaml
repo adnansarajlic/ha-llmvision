@@ -1,6 +1,6 @@
 blueprint:
-  name: AI Event Summary with Keywords (v1.4.2-keywords)
-  author: valentinfrlch
+  name: AI Event Summary with Keywords (v1.4.2)
+  author: valentinfrlch, adnansarajlic
   description: >
     AI-powered summaries for security camera events.
     Sends a notification with a preview to your phone that is updated dynamically when the AI summary is available.
