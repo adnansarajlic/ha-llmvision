@@ -1,5 +1,5 @@
 blueprint:
-  name: AI Event Summary (v1.4.2-keywords)
+  name: AI Event Summary Advanced (v1.4.2)
   author: valentinfrlch, adnansarajlic
   description: >
     AI-powered summaries for security camera events.
@@ -204,6 +204,7 @@ variables:
   keywords_only: !input keywords_only
   generate_title: !input generate_title
   response_language: !input response_language
+  message: !input message
   language_instruction: >
     {% if response_language and response_language|lower != 'english' %}
       Respond in {{response_language}}. 
