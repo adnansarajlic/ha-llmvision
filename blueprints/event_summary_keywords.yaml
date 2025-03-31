@@ -5,6 +5,7 @@ blueprint:
     AI-powered summaries for security camera events.
     Sends a notification with a preview to your phone that is updated dynamically when the AI summary is available.
     Includes keyword-based notification triggering with options to only notify on keyword matches.
+    Supports multiple languages for AI responses.
   domain: automation
   source_url: https://github.com/valentinfrlch/ha-llmvision/blob/main/blueprints/event_summary.yaml
   input:
@@ -30,6 +31,13 @@ blueprint:
       default: false
       selector:
         boolean:
+    response_language:
+      name: Response Language
+      description: 'Language for AI responses (e.g., "English", "Swedish", "Spanish"). Enter the language name in English.'
+      default: "English"
+      selector:
+        text:
+          multiline: false
     message:
       name: Prompt
       description: Model prompt for the video_analyzer action
@@ -195,6 +203,21 @@ variables:
   trigger_keywords: !input trigger_keywords
   keywords_only: !input keywords_only
   generate_title: !input generate_title
+  response_language: !input response_language
+  language_instruction: >
+    {% if response_language and response_language|lower != 'english' %}
+      Respond in {{response_language}}. 
+    {% else %}
+      {% set _ = None %}
+    {% endif %}
+  modified_prompt: >
+    {{language_instruction}}{{message}}
+  importance_prompt_with_language: >
+    {% if response_language and response_language|lower != 'english' %}
+      Classify the security event based on this image. Choose from the following options: "passive" for unimportant events, "time-sensitive" for notable but non-critical events such as a person at the front door, and "critical" only for potential burglaries or highly suspicious activity. Respond with one of these options exactly, without additional explanation. For clarity: always respond with one of the three English words: passive, time-sensitive, or critical, regardless of the language used elsewhere.
+    {% else %}
+      Classify the security event based on this image. Choose from the following options: "passive" for unimportant events, "time-sensitive" for notable but non-critical events such as a person at the front door, and "critical" only for potential burglaries or highly suspicious activity. Respond with one of these options exactly, without additional explanation.
+    {% endif %}
   keywords_list: >
     {% if trigger_keywords %}
       {% set keywords = trigger_keywords.split(',') %}
@@ -233,8 +256,6 @@ variables:
   label: Motion detected
   camera: >
     {{ camera_entity.replace("camera.", "").replace("_", " ")|capitalize }}
-  importance_prompt: >
-    Classify the security event based on this image. Choose from the following options: "passive" for unimportant events, "time-sensitive" for notable but non-critical events such as a person at the front door, and "critical" only for potential burglaries or highly suspicious activity. Respond with one of these options exactly, without additional explanation.
 
 max_exceeded: silent
 mode: single
@@ -264,7 +285,7 @@ action:
               image_entity: "{{[camera_entity]}}"
               provider: !input provider
               model: !input model
-              message: "{{importance_prompt}}"
+              message: "{{importance_prompt_with_language}}"
               include_filename: true
               target_width: 1280
               max_tokens: 3
@@ -279,7 +300,7 @@ action:
       duration: !input duration
       provider: !input provider
       model: !input model
-      message: !input message
+      message: "{{modified_prompt}}"
       use_memory: !input use_memory
       remember: !input remember
       expose_images: "{{preview_mode == 'Snapshot' or remember}}"
