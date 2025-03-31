@@ -39,7 +39,7 @@ blueprint:
           multiline: true
     trigger_keywords:
       name: Trigger Keywords
-      description: Enter keywords (comma-separated) that will trigger notifications regardless of importance setting. For example: "person, car, package, delivery"
+      description: Enter keywords (comma-separated) that will trigger notifications regardless of importance setting. For example person, car, package, delivery, etc. Keywords are case-insensitive and will be stripped of leading/trailing spaces.
       default: ""
       selector:
         text:
