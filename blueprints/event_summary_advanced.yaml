@@ -31,7 +31,7 @@ blueprint:
     message:
       name: Prompt
       description: Model prompt for the video_analyzer action
-      default: "Observe and summarize the movements and interactions of dynamic elements such as people, vehicles, and animals over a sequence of short-interval images. Ignore static objects and scenery. Provide a concise and chronological account of all detected motion, specifying subjects when identifiable (e.g., 'a red car,' 'a dog'). Do not mention or imply the existence of images. Present the information as if directly observing the events. If no movement is detected, respond with: 'No activity observed.'"
+      default: "Observe and summarize the movements and interactions of dynamic elements such as people, vehicles, and animals over a sequence of short-interval images. Ignore static objects and scenery. Provide a concise and chronological account of all detected motion, specifying subjects when identifiable (e.g., 'a red car,' 'a dog'). Do not mention or imply the existence of images - resent the information as if directly observing the events. If no movement is detected, respond with: 'No activity observed.'"
       selector:
         text:
           multiline: true
@@ -195,7 +195,7 @@ variables:
     {% endif %}
   modified_prompt: >
       {% if response_language and response_language|lower != 'english' %}
-        Respond in {{response_language}}. {{message}}
+        Respond in {{response_language}}. {{message}} in {{response_language}}.
       {% else %}
         {{message}}
       {% endif %}
@@ -337,12 +337,6 @@ action:
           {{ keyword_title }}
         {% else %}
           Motion detected
-        {% endif %}
-      custom_interruption_level: >
-        {% if contains_keywords %}
-          time-sensitive
-        {% else %}
-          active
         {% endif %}
 
   - choose:
