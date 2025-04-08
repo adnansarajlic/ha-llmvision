@@ -324,11 +324,13 @@ action:
       # Find matched keywords for title generation when AI title is disabled
       matched_keywords: >
         {% set found_keywords = [] %}
-        {% if not generate_title and keywords_list | length > 0 %}
+        {% if not generate_title and trigger_keywords %}
+          {% set keywords = trigger_keywords.split(',') %}
           {% set response_lower = response.response_text | lower %}
-          {% for keyword in keywords_list %}
-            {% if keyword in response_lower %}
-              {% set found_keywords = found_keywords + [keyword] %}
+          {% for keyword in keywords %}
+            {% set clean_keyword = keyword.strip().lower() %}
+            {% if clean_keyword and clean_keyword in response_lower %}
+              {% set found_keywords = found_keywords + [clean_keyword] %}
             {% endif %}
           {% endfor %}
         {% endif %}
