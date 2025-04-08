@@ -1,5 +1,5 @@
 blueprint:
-  name: AI Event Summary Advanced (v1.4.3)
+  name: AI Event Summary Advanced (v1.4.2)
   author: valentinfrlch, adnansarajlic
   description: >
     AI-powered summaries for security camera events.
@@ -87,13 +87,6 @@ blueprint:
           multiple: true
           filter:
             domain: camera
-    trigger_state:
-      name: Trigger State
-      description: Automation starts when one of your camera changes to this state.
-      default: 'recording'
-      selector:
-        text:
-          multiline: false
     motion_sensors:
       name: Motion Sensor
       description: Set if your cameras don't change state (Frigate). Use the same order used for camera entities.
@@ -249,10 +242,6 @@ max_exceeded: silent
 mode: single
 
 triggers:
-  - trigger: state
-    entity_id: !input camera_entities
-    to: !input trigger_state
-    id: 'camera_trigger'
   - trigger: state
     entity_id: !input motion_sensors
     to: 'on'
