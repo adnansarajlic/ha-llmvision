@@ -87,6 +87,13 @@ blueprint:
           multiple: true
           filter:
             domain: camera
+    trigger_state:
+      name: Trigger State
+      description: Automation starts when one of your camera changes to this state.
+      default: 'recording'
+      selector:
+        text:
+          multiline: false			
     motion_sensors:
       name: Motion Sensor
       description: Set motion sensor that will trigger automation. Use the same order used for camera entities.
@@ -254,6 +261,10 @@ max_exceeded: silent
 mode: single
 
 triggers:
+  - trigger: state
+    entity_id: !input camera_entities
+    to: !input trigger_state
+    id: 'camera_trigger'
   - trigger: state
     entity_id: !input motion_sensors
     to: 'on'
