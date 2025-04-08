@@ -1,5 +1,5 @@
 blueprint:
-  name: AI Event Summary Advanced (v1.4.2)
+  name: AI Event Summary Advanced (v1.4.3)
   author: valentinfrlch, adnansarajlic
   description: >
     AI-powered summaries for security camera events.
@@ -51,7 +51,7 @@ blueprint:
     generate_title:
       name: Generate Title
       description: Use AI to generate a title for the event summary. When disabled, titles will be generated from detected keywords if available.
-      default: true
+      default: false
       selector:
         boolean:
     run_conditions:
@@ -105,6 +105,17 @@ blueprint:
           options:
             - Snapshot
             - Live Preview
+    delay_seconds:
+      name: Initial Delay
+      description: Delay in seconds before analyzing video after motion is detected.
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 30
+          step: 1
+          unit_of_measurement: seconds
+          mode: slider
     cooldown:
       name: Cooldown
       description: Time in minutes to wait before running again. Strongly recommended for busy areas.
@@ -146,7 +157,7 @@ blueprint:
     model:
       name: Model
       description: Which model to use. Depends on chosen provider.
-      default: "gpt-4o-mini"
+      default: "gemini-2.0-flash"
       selector:
         text:
           multiline: false
@@ -179,6 +190,7 @@ blueprint:
 variables:
   remember: !input remember
   cooldown: !input cooldown
+  delay_seconds: !input delay_seconds
   preview_mode: !input preview_mode
   notify_devices: !input notify_device
   notification_delivery: !input notification_delivery
@@ -252,6 +264,14 @@ condition:
     conditions: !input run_conditions
   
 action:
+  # Add delay before processing if configured
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ delay_seconds > 0 }}"
+        sequence:
+          - delay: "{{ delay_seconds }}"
+  
   # Analyze event for keywords
   - alias: "Analyze event"
     action: llmvision.stream_analyzer
@@ -336,7 +356,7 @@ action:
         {% elif not generate_title and matched_keywords | length > 0 %}
           {{ keyword_title }}
         {% else %}
-          Motion detected
+          Motion detected 2
         {% endif %}
 
   - choose:
