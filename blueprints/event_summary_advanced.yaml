@@ -1,5 +1,5 @@
 blueprint:
-  name: AI Event Summary Advanced (v1.4.3)
+  name: AI Event Summary Advanced (v1.4.4)
   author: valentinfrlch, adnansarajlic
   description: >
     AI-powered summaries for security camera events.
@@ -256,6 +256,8 @@ variables:
   label: Motion detected
   camera: >
     {{ camera_entity.replace("camera.", "").replace("_", " ")|capitalize }}
+  # Define a variable to use for notification interruption level
+  custom_interruption_level: "active"
 
 max_exceeded: silent
 mode: single
@@ -271,8 +273,7 @@ triggers:
     id: 'motion_sensor_trigger'
 
 condition:
-  - condition: and
-    conditions: !input run_conditions
+  - and: !input run_conditions
   
 action:
   # Add delay before processing if configured
@@ -303,36 +304,32 @@ action:
       temperature: !input temperature  
     response_variable: response
 
-  # Check if event contains any trigger keywords
+  # Check if event contains any trigger keywords - FIXED VERSION
   - variables:
       contains_keywords: >
+        {% set ns = namespace(found=false) %}
         {% if keywords_list | length > 0 %}
           {% set response_lower = response.response_text | lower %}
           {% for keyword in keywords_list %}
             {% if keyword in response_lower %}
-              {{ true }}
-              {% break %}
+              {% set ns.found = true %}
             {% endif %}
           {% endfor %}
-          {{ false }}
-        {% else %}
-          {{ false }}
         {% endif %}
+        {{ ns.found }}
       
       # Find matched keywords for title generation when AI title is disabled
       matched_keywords: >
+        {% set found_keywords = [] %}
         {% if not generate_title and keywords_list | length > 0 %}
           {% set response_lower = response.response_text | lower %}
-          {% set found_keywords = [] %}
           {% for keyword in keywords_list %}
             {% if keyword in response_lower %}
               {% set found_keywords = found_keywords + [keyword] %}
             {% endif %}
           {% endfor %}
-          {{ found_keywords }}
-        {% else %}
-          {{ [] }}
         {% endif %}
+        {{ found_keywords }}
       
       # Generate keyword-based title
       keyword_title: >
@@ -347,8 +344,14 @@ action:
             {{ capitalized_keywords | join(" and ") }} detected
           {% endif %}
         {% else %}
-          {{ "Motion detected" }}
+          {{ "Motion detected 2" }}
         {% endif %}
+
+  # Debug the keyword matching
+  - service: system_log.write
+    data:
+      message: "Keywords found: {{ contains_keywords }}, Matched keywords: {{ matched_keywords }}"
+      level: info
 
   # Cancel automation if doesn't meet notification criteria
   - choose:
@@ -367,7 +370,7 @@ action:
         {% elif not generate_title and matched_keywords | length > 0 %}
           {{ keyword_title }}
         {% else %}
-          Motion detected 2
+          Motion detected
         {% endif %}
 
   - choose:
