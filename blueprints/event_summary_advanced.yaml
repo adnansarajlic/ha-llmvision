@@ -308,11 +308,14 @@ action:
   - variables:
       contains_keywords: >
         {% set ns = namespace(found=false) %}
-        {% if keywords_list | length > 0 %}
+        {% if trigger_keywords %}
+          {% set keywords = trigger_keywords.split(',') %}
           {% set response_lower = response.response_text | lower %}
-          {% for keyword in keywords_list %}
-            {% if keyword in response_lower %}
+          {% for keyword in keywords %}
+            {% set clean_keyword = keyword.strip().lower() %}
+            {% if clean_keyword and clean_keyword in response_lower %}
               {% set ns.found = true %}
+              {% break %}
             {% endif %}
           {% endfor %}
         {% endif %}
