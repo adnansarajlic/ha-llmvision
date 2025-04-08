@@ -50,7 +50,7 @@ blueprint:
         boolean:
     generate_title:
       name: Generate Title
-      description: Use AI to generate a title for the event summary.
+      description: Use AI to generate a title for the event summary. When disabled, titles will be generated from detected keywords if available.
       default: true
       selector:
         boolean:
@@ -89,7 +89,7 @@ blueprint:
             domain: camera
     motion_sensors:
       name: Motion Sensor
-      description: Set if your cameras don't change state (Frigate). Use the same order used for camera entities.
+      description: Set motion sensor that will trigger automation. Use the same order used for camera entities.
       default: []
       selector:
         entity:
@@ -287,6 +287,37 @@ action:
         {% else %}
           {{ false }}
         {% endif %}
+      
+      # Find matched keywords for title generation when AI title is disabled
+      matched_keywords: >
+        {% if not generate_title and keywords_list | length > 0 %}
+          {% set response_lower = response.response_text | lower %}
+          {% set found_keywords = [] %}
+          {% for keyword in keywords_list %}
+            {% if keyword in response_lower %}
+              {% set found_keywords = found_keywords + [keyword] %}
+            {% endif %}
+          {% endfor %}
+          {{ found_keywords }}
+        {% else %}
+          {{ [] }}
+        {% endif %}
+      
+      # Generate keyword-based title
+      keyword_title: >
+        {% if not generate_title and matched_keywords | length > 0 %}
+          {% set capitalized_keywords = [] %}
+          {% for keyword in matched_keywords %}
+            {% set capitalized_keywords = capitalized_keywords + [keyword | title] %}
+          {% endfor %}
+          {% if capitalized_keywords | length > 2 %}
+            {{ capitalized_keywords[0:2] | join(", ") }} and more detected
+          {% else %}
+            {{ capitalized_keywords | join(" and ") }} detected
+          {% endif %}
+        {% else %}
+          {{ "Motion detected" }}
+        {% endif %}
 
   # Cancel automation if doesn't meet notification criteria
   - choose:
@@ -299,7 +330,14 @@ action:
 
   - alias: "Update label with title"
     variables:
-      label: "{{ response.title if generate_title and response.title is defined else 'Motion detected' }}"
+      label: >
+        {% if generate_title and response.title is defined %}
+          {{ response.title }}
+        {% elif not generate_title and matched_keywords | length > 0 %}
+          {{ keyword_title }}
+        {% else %}
+          Motion detected
+        {% endif %}
       custom_interruption_level: >
         {% if contains_keywords %}
           time-sensitive
