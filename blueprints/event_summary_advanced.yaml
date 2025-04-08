@@ -1,5 +1,5 @@
 blueprint:
-  name: AI Event Summary Advanced (v1.4.2)
+  name: AI Event Summary Advanced (v1.4.3)
   author: valentinfrlch, adnansarajlic
   description: >
     AI-powered summaries for security camera events.
@@ -9,19 +9,9 @@ blueprint:
   domain: automation
   source_url: https://github.com/valentinfrlch/ha-llmvision/blob/main/blueprints/event_summary_advanced.yaml
   input:
-    important:
-      name: Important (Experimental)
-      description: >
-        Use AI to classify events as Critical, Normal or Low.
-        Notifications are sent only for events classified as Normal or higher.
-        Critical events override 'Do Not Disturb' settings.
-        Use with caution: AI can make mistakes.
-      default: false
-      selector:
-        boolean:
     remember:
       name: Remember
-      description: Stores this event in the Timeline so you can ask about it. If important is enabled, only events classified as Normal or Critical will be saved.
+      description: Stores this event in the Timeline so you can ask about it.
       default: false
       selector:
         boolean:
@@ -194,7 +184,6 @@ blueprint:
           step: 0.1
 
 variables:
-  important: !input important
   remember: !input remember
   cooldown: !input cooldown
   preview_mode: !input preview_mode
@@ -217,12 +206,6 @@ variables:
       {% else %}
         {{message}}
       {% endif %}
-  importance_prompt_with_language: >
-    {% if response_language and response_language|lower != 'english' %}
-      Classify the security event based on this image. Choose from the following options: "passive" for unimportant events, "time-sensitive" for notable but non-critical events such as a person at the front door, and "critical" only for potential burglaries or highly suspicious activity. Respond with one of these options exactly, without additional explanation. For clarity: always respond with one of the three English words: passive, time-sensitive, or critical, regardless of the language used elsewhere.
-    {% else %}
-      Classify the security event based on this image. Choose from the following options: "passive" for unimportant events, "time-sensitive" for notable but non-critical events such as a person at the front door, and "critical" only for potential burglaries or highly suspicious activity. Respond with one of these options exactly, without additional explanation.
-    {% endif %}
   keywords_list: >
     {% if trigger_keywords %}
       {% set keywords = trigger_keywords.split(',') %}
@@ -280,24 +263,7 @@ condition:
     conditions: !input run_conditions
   
 action:
-  - choose:
-      - conditions:
-          - condition: template
-            value_template: "{{ important }}"
-        sequence:
-          - action: llmvision.image_analyzer
-            data:
-              image_entity: "{{[camera_entity]}}"
-              provider: !input provider
-              model: !input model
-              message: "{{importance_prompt_with_language}}"
-              include_filename: true
-              target_width: 1280
-              max_tokens: 3
-              temperature: 0.1
-            response_variable: importance
-
-  # Analyze event for both importance and keywords
+  # Analyze event for keywords
   - alias: "Analyze event"
     action: llmvision.stream_analyzer
     data:
@@ -341,23 +307,13 @@ action:
             value_template: "{{ keywords_only and not contains_keywords }}"
         sequence:
           - stop: "No keywords found and keywords_only is enabled"
-      # If important is enabled and not keywords_only, check importance unless keywords are found
-      - conditions:
-          - condition: template
-            value_template: "{{ important and not keywords_only and importance.response_text|lower == 'passive' and not contains_keywords }}"
-        sequence:
-          - stop: "Event is not important and doesn't contain trigger keywords"
 
   - alias: "Update label with title"
     variables:
       label: "{{ response.title if generate_title and response.title is defined else 'Motion detected' }}"
       custom_interruption_level: >
-        {% if importance is defined and importance.response_text|lower == 'critical' %}
-          critical
-        {% elif contains_keywords %}
+        {% if contains_keywords %}
           time-sensitive
-        {% elif importance is defined %}
-          {{importance.response_text|lower}}
         {% else %}
           active
         {% endif %}
