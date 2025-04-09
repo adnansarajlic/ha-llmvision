@@ -218,20 +218,6 @@ variables:
       {% else %}
         {{message}}
       {% endif %}
-  keywords_list: >
-    {% if trigger_keywords %}
-      {% set keywords = trigger_keywords.split(',') %}
-      {% set clean_keywords = [] %}
-      {% for keyword in keywords %}
-        {% set clean_keyword = keyword.strip().lower() %}
-        {% if clean_keyword %}
-          {% set clean_keywords = clean_keywords + [clean_keyword] %}
-        {% endif %}
-      {% endfor %}
-      {{ clean_keywords }}
-    {% else %}
-      {{ [] }}
-    {% endif %}
   device_name_map: >
     {% set ns = namespace(device_names=[]) %}
     {% for device_id in notify_devices %}
@@ -321,42 +307,57 @@ action:
         {% endif %}
         {{ ns.found }}
       
-      # Find matched keywords for title generation when AI title is disabled
-      matched_keywords: >
-        {% set found_keywords = [] %}
-        {% if not generate_title and trigger_keywords %}
-          {% set keywords = trigger_keywords.split(',') %}
-          {% set response_lower = response.response_text | lower %}
-          {% for keyword in keywords %}
-            {% set clean_keyword = keyword.strip().lower() %}
-            {% if clean_keyword and clean_keyword in response_lower %}
-              {% set found_keywords = found_keywords + [clean_keyword] %}
-            {% endif %}
-          {% endfor %}
-        {% endif %}
-        {{ found_keywords }}
-      
-      # Generate keyword-based title
-      keyword_title: >
-        {% if not generate_title and matched_keywords | length > 0 %}
-          {% set capitalized_keywords = [] %}
-          {% for keyword in matched_keywords %}
-            {% set capitalized_keywords = capitalized_keywords + [keyword | title] %}
-          {% endfor %}
-          {% if capitalized_keywords | length > 2 %}
-            {{ capitalized_keywords[0:2] | join(", ") }} and more detected
-          {% else %}
-            {{ capitalized_keywords | join(" and ") }} detected
-          {% endif %}
-        {% else %}
-          {{ "Motion detected 2" }}
-        {% endif %}
+# Find matched keywords for title generation when AI title is disabled
+matched_keywords: >
+  {% set found_keywords = [] %}
+  {% if not generate_title and trigger_keywords %}
+    {% set keywords = trigger_keywords.split(',') %}
+    {% set response_lower = response.response_text | lower %}
+    {% for keyword in keywords %}
+      {% set clean_keyword = keyword.strip().lower() %}
+      {% if clean_keyword and clean_keyword in response_lower %}
+        {% set found_keywords = found_keywords + [clean_keyword] %}
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+  {{ found_keywords }}
+
+# Generate keyword-based title - FIX THIS PART
+keyword_title: >
+  {% if not generate_title and matched_keywords %}
+    {% if matched_keywords is string %}
+      {% set matched_keywords_list = matched_keywords | from_json %}
+    {% else %}
+      {% set matched_keywords_list = matched_keywords %}
+    {% endif %}
+    {% if matched_keywords_list | length > 0 %}
+      {% set capitalized_keywords = [] %}
+      {% for keyword in matched_keywords_list %}
+        {% set capitalized_keywords = capitalized_keywords + [keyword | title] %}
+      {% endfor %}
+      {% if capitalized_keywords | length > 2 %}
+        {{ capitalized_keywords[0:2] | join(", ") }} and more detected
+      {% else %}
+        {{ capitalized_keywords | join(" and ") }} detected
+      {% endif %}
+    {% else %}
+      Motion detected
+    {% endif %}
+  {% else %}
+    Motion detected
+  {% endif %}
 
   # Debug the keyword matching
   - service: system_log.write
     data:
       message: "Keywords found: {{ contains_keywords }}, Matched keywords: {{ matched_keywords }}"
       level: info
+
+  - service: system_log.write
+    data:
+      message: "RAW Response: {{ response.response_text }}"
+      level: info
+
 
   # Cancel automation if doesn't meet notification criteria
   - choose:
